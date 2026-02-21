@@ -143,107 +143,13 @@ lib/
 
 ## Getting Started
 
-### Prerequisites
+This project is a starting point for a Flutter application.
 
-- Flutter SDK `>=3.0.0`
-- Android Studio / VS Code with Flutter extension
-- A connected device or emulator
+A few resources to get you started if this is your first Flutter project:
 
-### Setup
+- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
+- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-```bash
-# Clone the repo
-git clone <repo-url>
-cd backonnect
-
-# Install dependencies
-flutter pub get
-
-# Run on a connected device
-flutter run
-```
-
-### Analyse
-
-```bash
-flutter analyze
-```
-
----
-
-## Configuration
-
-All network settings are in `lib/core/constants/api_constants.dart`:
-
-```dart
-static const String baseUrl        = 'https://myapp-7z5l.onrender.com';
-static const String apiPrefix      = '/api/v1';
-static const int connectTimeoutMs  = 90000; // 90s — accommodates Render cold start
-static const int receiveTimeoutMs  = 90000;
-static const int sendTimeoutMs     = 90000;
-```
-
-Pagination defaults are in `lib/core/constants/app_constants.dart`:
-
-```dart
-static const int    defaultPerPage           = 10;
-static const double infiniteScrollThreshold  = 500.0; // px from list bottom
-```
-
----
-
-## App Flow
-
-```
-App Launch
-    │
-    ▼
-SplashScreen (1.8s animated)
-    │
-    ├─ token exists? ──YES──▶ /items (ItemsListPage)
-    │
-    └─ NO ──▶ /login (LoginPage)
-                  │
-                  ├─ Sign In ──▶ POST /auth/login ──▶ /items
-                  │
-                  └─ Register ──▶ POST /auth/register ──▶ /items
-```
-
-All routes under `/items`, `/items/detail`, `/items/create`, `/items/edit`, and `/profile` are protected by `AuthMiddleware`, which synchronously reads the stored token and redirects unauthenticated users to `/login`.
-
----
-
-## Key Implementation Details
-
-### Token Refresh
-`AuthInterceptor` handles 401 responses transparently:
-1. Pauses all concurrent requests in a `Completer` queue
-2. Calls `POST /auth/refresh` with a dedicated Dio instance (avoids recursion)
-3. Saves the new token pair and retries all queued requests
-4. On refresh failure — clears tokens and routes to `/login`
-
-### Render Cold-Start Banner
-`ColdStartInterceptor` monitors in-flight requests:
-- An 8-second timer starts when the *first* request is sent
-- If no response arrives within 8s, a persistent floating snackbar appears: *"Server is waking up ☁️ — The backend is starting after being idle."*
-- The banner is dismissed automatically once any response arrives
-- Requests that complete in under 8s (warm server) never show the banner
-
-### Infinite Scroll
-`ItemsController` attaches a `ScrollController` listener. When `maxScrollExtent - pixels ≤ 500.0` and no load is in progress, `loadMore()` fetches the next page and appends results to the reactive list.
-
-### Offline Cache
-`ItemsRepositoryImpl` serialises page 1 to `LocalStorageService` after every successful fetch. On a network failure it deserialises the cache and returns it as a fallback, so the user always sees something.
-
-### Dual-Mode Form Controller
-`CreateItemController` serves both **create** and **edit** flows. It reads `Get.arguments` in `onInit()` — if the argument is an `ItemEntity`, it switches to edit mode and prefills the form fields. Both `CreateItemPage` and `EditItemPage` use the same controller and `ItemInputForm` widget.
-
-### Dependency Lifetime
-
-| Singleton | Scope |
-|---|---|
-| `LocalStorageService`, `TokenStorageService`, `ApiClient` | Permanent (full app lifetime) |
-| `AuthRemoteDatasource`, `AuthRepository`, `AuthController` | Permanent (full app lifetime) |
-| `LoginController` | Auth routes only — disposed on navigation away |
-| `ItemsController`, `ItemDetailController`, `CreateItemController` | Items route group |
-| `ProfileController` | Profile route only |
+For help getting started with Flutter development, view the
+[online documentation](https://docs.flutter.dev/), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
