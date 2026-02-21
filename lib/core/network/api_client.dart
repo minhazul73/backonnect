@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:backonnect/core/constants/api_constants.dart';
 import 'package:backonnect/core/exceptions/app_exceptions.dart';
 import 'package:backonnect/core/network/interceptors/auth_interceptor.dart';
+import 'package:backonnect/core/network/interceptors/cold_start_interceptor.dart';
 import 'package:backonnect/core/network/interceptors/logging_interceptor.dart';
 import 'package:backonnect/core/storage/token_storage_service.dart';
 import 'package:dio/dio.dart';
@@ -29,6 +30,7 @@ class ApiClient {
     );
 
     _dio.interceptors.addAll([
+      ColdStartInterceptor(),
       LoggingInterceptor(),
       AuthInterceptor(tokenService: Get.find<TokenStorageService>()),
     ]);
