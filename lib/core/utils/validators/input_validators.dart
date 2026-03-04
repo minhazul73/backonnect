@@ -3,7 +3,6 @@ class InputValidators {
 
   static const String _emailPattern =
       r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$';
-  static const int _passwordMinLength = 6;
   static const int _nameMinLength = 2;
 
   static String? validateEmail(String? value) {
@@ -20,9 +19,6 @@ class InputValidators {
     if (value == null || value.isEmpty) {
       return 'Password is required';
     }
-    // if (value.length < _passwordMinLength) {  // TODO: Remove later after testing
-    //   return 'Password must be at least $_passwordMinLength characters';
-    // }
     return null;
   }
 

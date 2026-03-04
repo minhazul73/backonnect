@@ -1,3 +1,4 @@
+import 'package:backonnect/core/auth/supabase_session_service.dart';
 import 'package:backonnect/core/network/api_client.dart';
 import 'package:backonnect/core/storage/local_storage_service.dart';
 import 'package:backonnect/core/storage/token_storage_service.dart';
@@ -11,7 +12,11 @@ class AppBinding extends Bindings {
   @override
   void dependencies() {
     Get.put<LocalStorageService>(LocalStorageService(), permanent: true);
+    // Keep TokenStorageService registered for now to avoid breaking any
+    // non-auth code paths that might still depend on it.
     Get.put<TokenStorageService>(TokenStorageService(), permanent: true);
+
+    Get.put<SupabaseSessionService>(SupabaseSessionService(), permanent: true);
     Get.put<ApiClient>(ApiClient(), permanent: true);
 
     // Auth dependencies needed app-wide (profile page, token refresh, etc.)
@@ -22,14 +27,14 @@ class AppBinding extends Bindings {
     Get.put<AuthRepository>(
       AuthRepositoryImpl(
         remoteDatasource: Get.find<AuthRemoteDatasource>(),
-        tokenStorageService: Get.find<TokenStorageService>(),
+        sessionService: Get.find<SupabaseSessionService>(),
       ),
       permanent: true,
     );
     Get.put<AuthController>(
       AuthController(
         authRepository: Get.find<AuthRepository>(),
-        tokenStorageService: Get.find<TokenStorageService>(),
+        sessionService: Get.find<SupabaseSessionService>(),
       ),
       permanent: true,
     );

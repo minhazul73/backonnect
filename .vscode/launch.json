@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backonnect (debug)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://itlfujemfcftddukpdie.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_xGAOhb7XLhFyslPnYYkxIA_7IXVcIFY",
+        "--dart-define=GOOGLE_WEB_CLIENT_ID=1095178054485-0blbnoc343k60iml4208bglnircv2bfd.apps.googleusercontent.com"
+      ]
+    },
+    {
+      "name": "Backonnect (profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://itlfujemfcftddukpdie.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_xGAOhb7XLhFyslPnYYkxIA_7IXVcIFY",
+        "--dart-define=GOOGLE_WEB_CLIENT_ID=1095178054485-0blbnoc343k60iml4208bglnircv2bfd.apps.googleusercontent.com"
+      ]
+    }
+  ]
+}

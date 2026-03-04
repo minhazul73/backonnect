@@ -1,24 +1,24 @@
 import 'dart:async';
 
 import 'package:backonnect/app/routes/app_routes.dart';
-import 'package:backonnect/core/constants/api_constants.dart';
-import 'package:backonnect/core/storage/token_storage_service.dart';
+import 'package:backonnect/core/auth/supabase_session_service.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart' hide Response;
 
 class AuthInterceptor extends Interceptor {
-  final TokenStorageService tokenService;
+  final SupabaseSessionService sessionService;
   bool _isRefreshing = false;
   final List<Completer<String>> _pendingQueue = [];
 
-  AuthInterceptor({required this.tokenService});
+  AuthInterceptor({required this.sessionService});
 
   @override
   Future<void> onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final token = await tokenService.getAccessToken();
+    final token = sessionService.cachedAccessToken ??
+        await sessionService.getAccessToken();
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
@@ -48,7 +48,7 @@ class AuthInterceptor extends Interceptor {
         final newToken = await completer.future;
         final opts = err.requestOptions;
         opts.headers['Authorization'] = 'Bearer $newToken';
-        final response = await Dio().fetch(opts);
+        final response = await Dio(BaseOptions(baseUrl: opts.baseUrl)).fetch(opts);
         return handler.resolve(response);
       } catch (_) {
         return handler.next(err);
@@ -57,35 +57,12 @@ class AuthInterceptor extends Interceptor {
 
     _isRefreshing = true;
     try {
-      final refreshToken = await tokenService.getRefreshToken();
-      if (refreshToken == null || refreshToken.isEmpty) {
+      final newAccessToken = await sessionService.refreshSession();
+      if (newAccessToken == null || newAccessToken.isEmpty) {
+        await sessionService.signOut();
         _logoutUser(handler, err);
         return;
       }
-
-      final refreshDio = Dio(
-        BaseOptions(
-          baseUrl: '${ApiConstants.baseUrl}${ApiConstants.apiPrefix}',
-          connectTimeout:
-              const Duration(milliseconds: ApiConstants.connectTimeoutMs),
-          receiveTimeout:
-              const Duration(milliseconds: ApiConstants.receiveTimeoutMs),
-        ),
-      );
-
-      final refreshResponse = await refreshDio.post(
-        '/auth/refresh',
-        data: {'refresh_token': refreshToken},
-      );
-
-      final data = refreshResponse.data['data'];
-      final newAccessToken = data['access_token'] as String;
-      final newRefreshToken = data['refresh_token'] as String;
-
-      await tokenService.saveTokens(
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      );
 
       // Resolve all queued requests
       for (final completer in _pendingQueue) {
@@ -96,18 +73,14 @@ class AuthInterceptor extends Interceptor {
       // Retry original request
       final opts = err.requestOptions;
       opts.headers['Authorization'] = 'Bearer $newAccessToken';
-      final response = await Dio(
-        BaseOptions(
-          baseUrl: '${ApiConstants.baseUrl}${ApiConstants.apiPrefix}',
-        ),
-      ).fetch(opts);
+      final response = await Dio(BaseOptions(baseUrl: opts.baseUrl)).fetch(opts);
       return handler.resolve(response);
     } catch (_) {
       for (final completer in _pendingQueue) {
         completer.completeError('Refresh failed');
       }
       _pendingQueue.clear();
-      await tokenService.clearTokens();
+      await sessionService.signOut();
       _logoutUser(handler, err);
     } finally {
       _isRefreshing = false;

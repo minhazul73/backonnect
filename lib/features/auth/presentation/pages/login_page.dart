@@ -112,6 +112,15 @@ class LoginPage extends GetView<LoginController> {
                 ],
               ),
               const SizedBox(height: 24),
+              // Google sign-in
+              Obx(
+                () => AuthButton(
+                  label: 'Continue with Google',
+                  isLoading: controller.isLoading.value,
+                  onPressed: controller.signInWithGoogle,
+                ),
+              ),
+              const SizedBox(height: 16),
               // Register button
               SizedBox(
                 width: double.infinity,

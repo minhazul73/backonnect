@@ -1,10 +1,12 @@
 import 'package:backonnect/app/routes/app_routes.dart';
+import 'package:backonnect/core/auth/supabase_session_service.dart';
 import 'package:backonnect/core/exceptions/app_exceptions.dart';
 import 'package:backonnect/core/utils/dialogs/app_snackbars.dart';
 import 'package:backonnect/features/auth/controllers/auth_controller.dart';
 import 'package:backonnect/features/auth/domain/repositories/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginController extends GetxController {
   final AuthRepository _authRepository;
@@ -31,14 +33,18 @@ class LoginController extends GetxController {
         email: emailController.text.trim(),
         password: passwordController.text,
       );
+
+      final sessionService = Get.find<SupabaseSessionService>();
+      if (!sessionService.hasSession) {
+        AppSnackbars.showError('Sign in failed. Please try again.');
+        return;
+      }
       // Mark user as logged in
       if (Get.isRegistered<AuthController>()) {
         await Get.find<AuthController>().fetchCurrentUser();
       }
       Get.offAllNamed<void>(AppRoutes.itemsList);
-    } on UnauthorizedException {
-      AppSnackbars.showError('Invalid email or password');
-    } on ConflictException catch (e) {
+    } on AuthException catch (e) {
       AppSnackbars.showError(e.message);
     } on AppException catch (e) {
       AppSnackbars.showError(e.message);
@@ -57,18 +63,48 @@ class LoginController extends GetxController {
         email: emailController.text.trim(),
         password: passwordController.text,
       );
+
+      final sessionService = Get.find<SupabaseSessionService>();
+      if (!sessionService.hasSession) {
+        // Likely email confirmation is required.
+        AppSnackbars.showInfo('Check your email to confirm your account.');
+        Get.offAllNamed<void>(AppRoutes.login);
+        return;
+      }
       if (Get.isRegistered<AuthController>()) {
         await Get.find<AuthController>().fetchCurrentUser();
       }
       Get.offAllNamed<void>(AppRoutes.itemsList);
-    } on ConflictException {
-      AppSnackbars.showError('This email is already registered');
-    } on ValidationException catch (e) {
+    } on AuthException catch (e) {
       AppSnackbars.showError(e.message);
     } on AppException catch (e) {
       AppSnackbars.showError(e.message);
     } catch (_) {
       AppSnackbars.showError('Something went wrong. Please try again.');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    try {
+      isLoading.value = true;
+      await _authRepository.signInWithGoogle();
+
+      final sessionService = Get.find<SupabaseSessionService>();
+      if (!sessionService.hasSession) {
+        // Cancelled or failed silently.
+        return;
+      }
+
+      if (Get.isRegistered<AuthController>()) {
+        await Get.find<AuthController>().fetchCurrentUser();
+      }
+      Get.offAllNamed<void>(AppRoutes.itemsList);
+    } on AuthException catch (e) {
+      AppSnackbars.showError(e.message);
+    } catch (_) {
+      AppSnackbars.showError('Google sign-in failed. Please try again.');
     } finally {
       isLoading.value = false;
     }

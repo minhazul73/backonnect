@@ -1,18 +1,17 @@
-import 'package:backonnect/features/auth/domain/entities/token_entity.dart';
 import 'package:backonnect/features/auth/domain/entities/user_entity.dart';
 
 abstract class AuthRepository {
-  Future<TokenEntity> login({
+  Future<void> login({
     required String email,
     required String password,
   });
 
-  Future<TokenEntity> register({
+  Future<void> register({
     required String email,
     required String password,
   });
 
-  Future<TokenEntity> refreshToken(String refreshToken);
+  Future<void> signInWithGoogle();
 
   Future<UserEntity> getCurrentUser();
 

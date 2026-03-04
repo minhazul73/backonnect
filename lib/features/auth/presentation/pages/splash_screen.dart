@@ -1,7 +1,7 @@
 import 'package:backonnect/app/routes/app_routes.dart';
 import 'package:backonnect/app/theme/app_colors.dart';
 import 'package:backonnect/app/theme/app_text_styles.dart';
-import 'package:backonnect/core/storage/token_storage_service.dart';
+import 'package:backonnect/core/auth/supabase_session_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -45,9 +45,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _navigate() async {
     await Future<void>.delayed(const Duration(milliseconds: 1800));
-    final tokenService = Get.find<TokenStorageService>();
-    final hasToken = tokenService.hasToken;
-    if (hasToken) {
+    final sessionService = Get.find<SupabaseSessionService>();
+    if (sessionService.hasSession) {
       Get.offAllNamed<void>(AppRoutes.itemsList);
     } else {
       Get.offAllNamed<void>(AppRoutes.login);

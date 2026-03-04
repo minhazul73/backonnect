@@ -1,53 +1,73 @@
-import 'package:backonnect/core/storage/token_storage_service.dart';
+import 'package:backonnect/core/auth/supabase_session_service.dart';
+import 'package:backonnect/core/config/supabase_env.dart';
 import 'package:backonnect/features/auth/data/datasources/auth_remote_datasource.dart';
-import 'package:backonnect/features/auth/domain/entities/token_entity.dart';
 import 'package:backonnect/features/auth/domain/entities/user_entity.dart';
 import 'package:backonnect/features/auth/domain/repositories/auth_repository.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDatasource remoteDatasource;
-  final TokenStorageService tokenStorageService;
+  final SupabaseSessionService sessionService;
 
   AuthRepositoryImpl({
     required this.remoteDatasource,
-    required this.tokenStorageService,
+    required this.sessionService,
   });
 
   @override
-  Future<TokenEntity> login({
+  Future<void> login({
     required String email,
     required String password,
   }) async {
-    final model = await remoteDatasource.login(email: email, password: password);
-    await tokenStorageService.saveTokens(
-      accessToken: model.accessToken,
-      refreshToken: model.refreshToken,
+    await Supabase.instance.client.auth.signInWithPassword(
+      email: email,
+      password: password,
     );
-    return model.toEntity();
   }
 
   @override
-  Future<TokenEntity> register({
+  Future<void> register({
     required String email,
     required String password,
   }) async {
-    final model =
-        await remoteDatasource.register(email: email, password: password);
-    await tokenStorageService.saveTokens(
-      accessToken: model.accessToken,
-      refreshToken: model.refreshToken,
+    await Supabase.instance.client.auth.signUp(
+      email: email,
+      password: password,
     );
-    return model.toEntity();
   }
 
   @override
-  Future<TokenEntity> refreshToken(String token) async {
-    final model = await remoteDatasource.refreshToken(token);
-    await tokenStorageService.saveTokens(
-      accessToken: model.accessToken,
-      refreshToken: model.refreshToken,
+  Future<void> signInWithGoogle() async {
+    if (SupabaseEnv.googleWebClientId.isEmpty) {
+      throw const AuthException(
+        'Missing GOOGLE_WEB_CLIENT_ID. Provide it via --dart-define.',
+      );
+    }
+
+    final googleSignIn = GoogleSignIn(
+      serverClientId: SupabaseEnv.googleWebClientId,
     );
-    return model.toEntity();
+
+    final account = await googleSignIn.signIn();
+    if (account == null) {
+      // User cancelled.
+      return;
+    }
+
+    final auth = await account.authentication;
+    final idToken = auth.idToken;
+    final accessToken = auth.accessToken;
+
+    if (idToken == null || idToken.isEmpty) {
+      throw const AuthException('No Google ID token returned.');
+    }
+
+    await Supabase.instance.client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
   }
 
   @override
@@ -58,6 +78,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<void> logout() async {
-    await tokenStorageService.clearTokens();
+    await sessionService.signOut();
   }
 }

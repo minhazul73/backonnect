@@ -1,18 +1,22 @@
-import 'package:backonnect/core/storage/token_storage_service.dart';
+import 'dart:async';
+
+import 'package:backonnect/core/auth/supabase_session_service.dart';
 import 'package:backonnect/core/utils/logger/app_logger.dart';
 import 'package:backonnect/features/auth/domain/entities/user_entity.dart';
 import 'package:backonnect/features/auth/domain/repositories/auth_repository.dart';
 import 'package:get/get.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthController extends GetxController {
   final AuthRepository _authRepository;
-  final TokenStorageService _tokenStorageService;
+  final SupabaseSessionService _sessionService;
+  StreamSubscription<AuthState>? _authSubscription;
 
   AuthController({
     required AuthRepository authRepository,
-    required TokenStorageService tokenStorageService,
+    required SupabaseSessionService sessionService,
   })  : _authRepository = authRepository,
-        _tokenStorageService = tokenStorageService;
+        _sessionService = sessionService;
 
   final Rx<UserEntity?> currentUser = Rx<UserEntity?>(null);
   final RxBool isLoggedIn = false.obs;
@@ -21,13 +25,24 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    // Auto-fetch user if a token is already stored (app relaunch / smart auth)
-    if (_tokenStorageService.hasToken) {
+
+    isLoggedIn.value = _sessionService.hasSession;
+    if (_sessionService.hasSession) {
       _fetchCurrentUser();
     }
-    ever(isLoggedIn, (bool loggedIn) {
-      if (loggedIn) _fetchCurrentUser();
-    });
+
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (data) {
+        final event = data.event;
+        if (event == AuthChangeEvent.signedIn) {
+          isLoggedIn.value = true;
+          _fetchCurrentUser();
+        } else if (event == AuthChangeEvent.signedOut) {
+          currentUser.value = null;
+          isLoggedIn.value = false;
+        }
+      },
+    );
   }
 
   Future<void> fetchCurrentUser() async {
@@ -60,6 +75,7 @@ class AuthController extends GetxController {
 
   @override
   void onClose() {
+    _authSubscription?.cancel();
     currentUser.close();
     isLoggedIn.close();
     isFetchingUser.close();
